@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>convert-sp</title>
+    <style>
+      :root {
+        --bg: #0f1115;
+        --panel: #171a21;
+        --panel2: #1e222b;
+        --border: #2a303c;
+        --text: #e6e9ef;
+        --muted: #98a2b3;
+        --accent: #4f8cff;
+        --green: #2f9e6b;
+        --amber: #b8862b;
+        --red: #b4443c;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.5 'Segoe UI', system-ui, sans-serif;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--border);
+      }
+      header strong { font-size: 17px; }
+      header .db { color: var(--muted); font-family: Consolas, monospace; font-size: 12px; }
+      main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+      }
+      h1 { font-size: 18px; margin: 0 0 6px; }
+      h2 { font-size: 15px; margin: 0 0 4px; }
+      p.muted, .muted { color: var(--muted); font-size: 13px; }
+      .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+      .grow { flex: 1; }
+      button {
+        background: var(--panel2);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        padding: 6px 12px;
+        font: inherit;
+        cursor: pointer;
+      }
+      button.primary { background: #2f6bdb; border-color: #2f6bdb; font-weight: 600; }
+      button.danger { color: #ffb4ae; }
+      button:disabled { opacity: .5; cursor: not-allowed; }
+      input, select {
+        background: #0f1218;
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 7px;
+        padding: 7px 9px;
+        font: inherit;
+      }
+      label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+      .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+      .grid .wide { grid-column: 1 / -1; }
+      .profile {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        padding: 12px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-bottom: 8px;
+      }
+      .badge { display: inline-block; padding: 1px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; }
+      .get { background: rgba(79,140,255,.18); color: #9fc0ff; }
+      .post { background: rgba(47,158,107,.18); color: #8fdcb8; }
+      .delete { background: rgba(180,68,60,.18); color: #ffaaa3; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      th { text-align: left; font-size: 11px; text-transform: uppercase; color: var(--muted); padding: 8px; border-bottom: 1px solid var(--border); }
+      td { padding: 6px 8px; border-bottom: 1px solid #222834; vertical-align: top; }
+      td.mono, .mono { font-family: Consolas, monospace; font-size: 12px; }
+      tr.skipped { opacity: .5; }
+      pre {
+        background: #0b0d12;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        font: 12px/1.6 Consolas, monospace;
+        max-height: 300px;
+        overflow: auto;
+        white-space: pre-wrap;
+      }
+      .banner { border-radius: 8px; padding: 9px 12px; margin-bottom: 12px; font-size: 13px; }
+      .banner.error { background: rgba(180,68,60,.15); border: 1px solid rgba(180,68,60,.5); color: #ffb4ae; }
+      .banner.ok { background: rgba(47,158,107,.15); border: 1px solid rgba(47,158,107,.5); color: #9fe3c0; }
+      .hidden { display: none; }
+      .stat { display: inline-block; margin-right: 18px; }
+      .stat b { font-size: 20px; display: block; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <strong>◧ convert-sp</strong>
+      <span class="db" id="db"></span>
+      <span class="grow"></span>
+      <span class="muted">fallback interface — build the Angular app for the full experience</span>
+    </header>
+    <main>
+      <div id="message"></div>
+
+      <section class="card" id="profiles-view">
+        <div class="row">
+          <div class="grow">
+            <h1>Connections</h1>
+            <p class="muted">Saved profiles live in %APPDATA%\convert-sp. Passwords are encrypted.</p>
+          </div>
+          <button onclick="newProfile()">New connection</button>
+        </div>
+        <div id="profile-list"></div>
+      </section>
+
+      <section class="card hidden" id="form-view">
+        <h1 id="form-title">New connection</h1>
+        <p class="muted">Catalog reads only. No procedure is executed against the source.</p>
+        <div class="grid" style="margin-top:14px">
+          <label>Name<input id="f-name" placeholder="Production" /></label>
+          <label>Server<input id="f-server" value="localhost" /></label>
+          <label>Port<input id="f-port" type="number" value="1433" /></label>
+          <label>Instance (optional)<input id="f-instance" /></label>
+          <label>User<input id="f-user" value="sa" /></label>
+          <label>Password<input id="f-password" type="password" placeholder="leave blank to keep stored" /></label>
+          <label class="wide">Database<input id="f-database" placeholder="Acme" /></label>
+          <label class="wide">Output folder<input id="f-output" placeholder="C:\source\acme-api" /></label>
+          <label>Project name<input id="f-project" placeholder="acme-api" /></label>
+          <label style="justify-content:flex-end">Encrypt / trust certificate
+            <span class="row">
+              <input id="f-encrypt" type="checkbox" checked /> encrypt
+              <input id="f-trust" type="checkbox" checked /> trust
+            </span>
+          </label>
+        </div>
+        <div class="row" style="margin-top:14px; justify-content:flex-end">
+          <button onclick="showProfiles()">Cancel</button>
+          <button onclick="testConnection()">Test connection</button>
+          <button class="primary" onclick="saveProfile()">Save and load procedures</button>
+        </div>
+      </section>
+
+      <section class="card hidden" id="procedures-view">
+        <div class="row">
+          <div class="grow">
+            <h1>Procedures</h1>
+            <p class="muted" id="proc-summary"></p>
+          </div>
+          <button onclick="loadProcedures(true)">Rescan</button>
+          <button class="primary" onclick="generate()">Generate selected</button>
+        </div>
+        <div class="row" style="margin:12px 0">
+          <input class="grow" id="filter" placeholder="Filter…" oninput="renderProcedures()" />
+          <label class="row muted"><input type="checkbox" id="show-skipped" onchange="renderProcedures()" /> show skipped</label>
+        </div>
+        <div style="max-height:55vh; overflow:auto">
+          <table>
+            <thead>
+              <tr><th></th><th>Procedure</th><th>Verb</th><th>Tables</th><th>Destination</th><th>Method</th></tr>
+            </thead>
+            <tbody id="proc-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card hidden" id="progress-view">
+        <h1>Generating</h1>
+        <p class="muted" id="progress-state">Working…</p>
+        <pre id="log"></pre>
+        <div class="row" id="result-actions" style="justify-content:flex-end"></div>
+      </section>
+    </main>
+
+    <script>
+      const TOKEN = new URLSearchParams(location.search).get('token') || sessionStorage.getItem('convert-sp-token') || '';
+      if (TOKEN) sessionStorage.setItem('convert-sp-token', TOKEN);
+
+      const state = { profiles: [], profileId: null, procedures: [], selected: new Set(), database: '' };
+
+      async function api(method, path, body) {
+        const response = await fetch(path, {
+          method,
+          headers: {
+            'content-type': 'application/json',
+            'x-convert-sp-token': TOKEN || sessionStorage.getItem('convert-sp-token') || '',
+          },
+          body: body === undefined ? undefined : JSON.stringify(body),
+        });
+        const text = await response.text();
+        const data = text ? JSON.parse(text) : null;
+        if (!response.ok) throw new Error(data && data.message ? data.message : response.statusText);
+        return data;
+      }
+
+      function message(text, kind) {
+        const box = document.getElementById('message');
+        box.innerHTML = text ? `<div class="banner ${kind || 'ok'}">${escapeHtml(text)}</div>` : '';
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      }
+
+      function show(id) {
+        for (const section of ['profiles-view', 'form-view', 'procedures-view', 'progress-view']) {
+          document.getElementById(section).classList.toggle('hidden', section !== id);
+        }
+      }
+
+      async function loadProfiles() {
+        const result = await api('GET', '/api/profiles');
+        state.profiles = result.profiles;
+        renderProfiles();
+      }
+
+      function renderProfiles() {
+        const list = document.getElementById('profile-list');
+        if (state.profiles.length === 0) {
+          list.innerHTML = '<p class="muted">No saved connections yet.</p>';
+          return;
+        }
+        list.innerHTML = state.profiles
+          .map(
+            (profile) => `
+          <div class="profile">
+            <div class="grow">
+              <h2>${escapeHtml(profile.name)}</h2>
+              <p class="muted">${escapeHtml(profile.server)}:${profile.port} / ${escapeHtml(profile.database)} · ${escapeHtml(profile.user)}</p>
+              <p class="muted">${escapeHtml(profile.outputDir)}</p>
+            </div>
+            <button class="primary" onclick="useProfile('${profile.id}')">Use</button>
+            <button onclick="editProfile('${profile.id}')">Edit</button>
+            <button class="danger" onclick="removeProfile('${profile.id}')">Delete</button>
+          </div>`,
+          )
+          .join('');
+      }
+
+      function fillForm(profile) {
+        document.getElementById('f-name').value = profile.name;
+        document.getElementById('f-server').value = profile.server;
+        document.getElementById('f-port').value = profile.port;
+        document.getElementById('f-instance').value = profile.instanceName || '';
+        document.getElementById('f-database').value = profile.database;
+        document.getElementById('f-user').value = profile.user;
+        document.getElementById('f-password').value = '';
+        document.getElementById('f-encrypt').checked = profile.encrypt;
+        document.getElementById('f-trust').checked = profile.trustServerCertificate;
+        document.getElementById('f-output').value = profile.outputDir;
+        document.getElementById('f-project').value = profile.projectName;
+      }
+
+      function formValue() {
+        return {
+          name: document.getElementById('f-name').value.trim(),
+          server: document.getElementById('f-server').value.trim(),
+          port: Number(document.getElementById('f-port').value),
+          instanceName: document.getElementById('f-instance').value.trim() || null,
+          database: document.getElementById('f-database').value.trim(),
+          user: document.getElementById('f-user').value.trim(),
+          encrypt: document.getElementById('f-encrypt').checked,
+          trustServerCertificate: document.getElementById('f-trust').checked,
+          outputDir: document.getElementById('f-output').value.trim(),
+          projectName: document.getElementById('f-project').value.trim(),
+          password: document.getElementById('f-password').value || undefined,
+        };
+      }
+
+      function showProfiles() {
+        show('profiles-view');
+        loadProfiles().catch((error) => message(error.message, 'error'));
+      }
+
+      function newProfile() {
+        state.profileId = null;
+        document.getElementById('form-title').textContent = 'New connection';
+        for (const id of ['f-name', 'f-instance', 'f-database', 'f-password', 'f-output', 'f-project']) {
+          document.getElementById(id).value = '';
+        }
+        document.getElementById('f-server').value = 'localhost';
+        document.getElementById('f-port').value = 1433;
+        document.getElementById('f-user').value = 'sa';
+        show('form-view');
+      }
+
+      function editProfile(id) {
+        const profile = state.profiles.find((item) => item.id === id);
+        if (!profile) return;
+        state.profileId = id;
+        document.getElementById('form-title').textContent = 'Edit connection';
+        fillForm(profile);
+        show('form-view');
+      }
+
+      async function removeProfile(id) {
+        if (!confirm('Delete this connection?')) return;
+        await api('DELETE', '/api/profiles/' + id);
+        loadProfiles();
+      }
+
+      async function testConnection() {
+        try {
+          const value = formValue();
+          const result = await api('POST', '/api/connections/test', {
+            server: value.server, port: value.port, instanceName: value.instanceName,
+            database: value.database || 'master', user: value.user, password: value.password || '',
+            encrypt: value.encrypt, trustServerCertificate: value.trustServerCertificate,
+          });
+          message('Connected: ' + result.version, 'ok');
+        } catch (error) {
+          message(error.message, 'error');
+        }
+      }
+
+      async function saveProfile() {
+        try {
+          const value = formValue();
+          if (!value.projectName && value.database) value.projectName = value.database.toLowerCase() + '-api';
+          const profile = state.profileId
+            ? await api('PUT', '/api/profiles/' + state.profileId, value)
+            : await api('POST', '/api/profiles', value);
+          state.profileId = profile.id;
+          state.database = profile.database;
+          document.getElementById('db').textContent = profile.database;
+          await loadProcedures(true);
+        } catch (error) {
+          message(error.message, 'error');
+        }
+      }
+
+      async function useProfile(id) {
+        const profile = state.profiles.find((item) => item.id === id);
+        if (!profile) return;
+        state.profileId = id;
+        fillForm(profile);
+        state.database = profile.database;
+        document.getElementById('db').textContent = profile.database;
+        await loadProcedures(false);
+      }
+
+      async function loadProcedures(refresh) {
+        try {
+          message('');
+          show('procedures-view');
+          const result = await api('GET', '/api/profiles/' + state.profileId + '/procedures' + (refresh ? '?refresh=1' : ''));
+          state.procedures = result.procedures;
+          state.database = result.database;
+          document.getElementById('db').textContent = result.database;
+          state.selected = new Set(result.procedures.filter((p) => p.destination.kind !== 'skipped').map((p) => p.key));
+          renderProcedures();
+        } catch (error) {
+          message(error.message, 'error');
+        }
+      }
+
+      function renderProcedures() {
+        const filter = document.getElementById('filter').value.toLowerCase();
+        const showSkipped = document.getElementById('show-skipped').checked;
+        const rows = state.procedures.filter((p) => {
+          if (!showSkipped && p.destination.kind === 'skipped') return false;
+          if (!filter) return true;
+          return (p.schema + '.' + p.name).toLowerCase().includes(filter) || p.tables.join(' ').toLowerCase().includes(filter);
+        });
+        const generated = state.procedures.filter((p) => p.destination.kind !== 'skipped').length;
+        document.getElementById('proc-summary').textContent =
+          state.procedures.length + ' scanned · ' + generated + ' generated · ' + (state.procedures.length - generated) + ' skipped';
+        document.getElementById('proc-body').innerHTML = rows
+          .map((p) => {
+            const skipped = p.destination.kind === 'skipped';
+            const destination = skipped ? p.destination.reason : p.destination.className;
+            return `<tr class="${skipped ? 'skipped' : ''}">
+              <td><input type="checkbox" ${state.selected.has(p.key) ? 'checked' : ''} ${skipped ? 'disabled' : ''}
+                   onchange="toggle('${p.key}')" /></td>
+              <td class="mono">${escapeHtml(p.schema + '.' + p.name)}</td>
+              <td><span class="badge ${p.verb}">${p.verb}</span></td>
+              <td class="muted">${escapeHtml(p.tables.join(', ') || '—')}</td>
+              <td class="muted">${escapeHtml(destination)}</td>
+              <td class="mono">${escapeHtml(skipped ? '—' : p.methodName)}</td>
+            </tr>`;
+          })
+          .join('');
+      }
+
+      function toggle(key) {
+        if (state.selected.has(key)) state.selected.delete(key);
+        else state.selected.add(key);
+      }
+
+      async function generate() {
+        try {
+          const value = formValue();
+          if (state.selected.size === 0) throw new Error('Select at least one procedure.');
+          document.getElementById('result-actions').innerHTML = '';
+          document.getElementById('log').textContent = '';
+          show('progress-view');
+          const { jobId } = await api('POST', '/api/generate', {
+            profileId: state.profileId,
+            selectedKeys: [...state.selected],
+            outputDir: value.outputDir,
+            projectName: value.projectName,
+            overwrite: 'safe',
+          });
+          poll(jobId);
+        } catch (error) {
+          message(error.message, 'error');
+          show('procedures-view');
+        }
+      }
+
+      async function poll(jobId) {
+        try {
+          const job = await api('GET', '/api/jobs/' + jobId);
+          document.getElementById('log').textContent = job.logs.join('\n');
+          if (job.state === 'running') {
+            setTimeout(() => poll(jobId), 700);
+            return;
+          }
+          if (job.state === 'error') {
+            document.getElementById('progress-state').textContent = 'Failed: ' + job.error;
+            return;
+          }
+          const result = job.result;
+          document.getElementById('progress-state').innerHTML =
+            `<span class="stat"><b>${result.generated}</b>generated</span>` +
+            `<span class="stat"><b>${result.skipped}</b>skipped</span>` +
+            `<span class="stat"><b>${result.counts.created || 0}</b>created</span>` +
+            `<span class="stat"><b>${result.counts.updated || 0}</b>updated</span>` +
+            `<span class="stat"><b>${result.counts.conflict || 0}</b>conflicts</span>` +
+            `<p class="muted">${escapeHtml(result.outputDir)}</p>`;
+          document.getElementById('result-actions').innerHTML =
+            `<a href="/api/jobs/${jobId}/report?token=${encodeURIComponent(TOKEN)}" target="_blank"><button>Open report</button></a>`;
+        } catch (error) {
+          document.getElementById('progress-state').textContent = 'Failed: ' + error.message;
+        }
+      }
+
+      (async () => {
+        try {
+          const info = await api('GET', '/api/info');
+          document.getElementById('db').textContent = info.secretMode === 'passphrase' ? 'passphrase protected' : '';
+          await loadProfiles();
+        } catch (error) {
+          message(error.message, 'error');
+        }
+      })();
+    </script>
+  </body>
+</html>

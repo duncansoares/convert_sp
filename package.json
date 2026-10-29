@@ -1,0 +1,41 @@
+{
+  "name": "convert-sp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Generate a repository-based NestJS application from SQL Server stored procedures",
+  "type": "module",
+  "bin": {
+    "convert-sp": "./dist/cli.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "cli": "node dist/cli.js",
+    "ui": "node dist/cli.js ui",
+    "start": "node dist/cli.js",
+    "build:web": "npm --prefix web run build",
+    "build:all": "npm run build && npm run build:web",
+    "smoke": "node scripts/smoke.mjs",
+    "verify:generated": "node scripts/verify-generated.mjs",
+    "sample": "node scripts/sample-generation.mjs"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.5",
+    "@fastify/static": "^10.1.8",
+    "commander": "^15.0.0",
+    "fastify": "^5.12.7",
+    "mssql": "^12.7.13",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/mssql": "^12.3.0",
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}
